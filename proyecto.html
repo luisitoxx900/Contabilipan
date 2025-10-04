@@ -1,1 +1,238 @@
-proyecto 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calcupan - Costo por Órdenes</title>
+  <!-- Librería para exportar a Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+    .container {
+      background: #fff;
+      padding: 25px;
+      margin: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+      max-width: 700px;
+      width: 100%;
+      animation: fadeIn 0.8s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 15px;
+      font-size: 2rem;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+      color: #34495e;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      transition: 0.3s;
+    }
+    input:focus {
+      border-color: #3498db;
+      outline: none;
+      box-shadow: 0 0 6px rgba(52, 152, 219, 0.5);
+    }
+    button {
+      margin-top: 15px;
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #27ae60, #2ecc71);
+      color: #fff;
+      font-weight: bold;
+      font-size: 1rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+      background: #f9f9f9;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background: #34495e;
+      color: white;
+    }
+    tr:hover {
+      background: #ecf0f1;
+    }
+    .resumen {
+      margin-top: 20px;
+      padding: 15px;
+      background: #dff9fb;
+      border-left: 5px solid #3498db;
+      border-radius: 8px;
+      font-weight: bold;
+      color: #2c3e50;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Calcupan 🍞</h1>
+
+    <label for="orden">Nombre de la orden</label>
+    <input type="text" id="orden" placeholder="Ejemplo: Pan francés">
+
+    <label for="materia">Materia prima (Q)</label>
+    <input type="number" id="materia" step="0.01" placeholder="Ejemplo: 150">
+
+    <label for="mano">Mano de obra (Q)</label>
+    <input type="number" id="mano" step="0.01" placeholder="Ejemplo: 100">
+
+    <label for="cif">Costos indirectos (CIF) (Q)</label>
+    <input type="number" id="cif" step="0.01" placeholder="Ejemplo: 50">
+
+    <label for="cantidad">Cantidad de productos</label>
+    <input type="number" id="cantidad" placeholder="Ejemplo: 200">
+
+    <button onclick="agregarOrden()">➕ Agregar orden</button>
+    <button onclick="generarExcel()">📘 Generar Contabilipan (Excel)</button>
+
+    <table id="tablaOrdenes" style="display:none;">
+      <thead>
+        <tr>
+          <th>Orden</th>
+          <th>Cant.</th>
+          <th>Materia Prima (Q)</th>
+          <th>Mano de Obra (Q)</th>
+          <th>CIF (Q)</th>
+          <th>Total (Q)</th>
+          <th>Unitario (Q)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="resumen" id="resumen" style="display:none;"></div>
+  </div>
+
+  <script>
+    let ordenes = [];
+
+    function agregarOrden() {
+      const nombre = document.getElementById("orden").value || "Orden sin nombre";
+      const materia = parseFloat(document.getElementById("materia").value) || 0;
+      const mano = parseFloat(document.getElementById("mano").value) || 0;
+      const cif = parseFloat(document.getElementById("cif").value) || 0;
+      const cantidad = parseFloat(document.getElementById("cantidad").value) || 1;
+
+      const costoTotal = materia + mano + cif;
+      const costoUnitario = costoTotal / cantidad;
+
+      ordenes.push({ nombre, cantidad, materia, mano, cif, costoTotal, costoUnitario });
+      mostrarOrdenes();
+      limpiarCampos();
+    }
+
+    function mostrarOrdenes() {
+      const tabla = document.getElementById("tablaOrdenes");
+      const tbody = tabla.querySelector("tbody");
+      tbody.innerHTML = "";
+      let totalGeneral = 0;
+
+      ordenes.forEach(o => {
+        const row = `<tr>
+          <td>${o.nombre}</td>
+          <td>${o.cantidad}</td>
+          <td>Q${o.materia.toFixed(2)}</td>
+          <td>Q${o.mano.toFixed(2)}</td>
+          <td>Q${o.cif.toFixed(2)}</td>
+          <td>Q${o.costoTotal.toFixed(2)}</td>
+          <td>Q${o.costoUnitario.toFixed(2)}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+        totalGeneral += o.costoTotal;
+      });
+
+      tabla.style.display = "table";
+      const resumen = document.getElementById("resumen");
+      resumen.style.display = "block";
+      resumen.innerText = `📊 Total de órdenes: ${ordenes.length} | Costo acumulado: Q${totalGeneral.toFixed(2)}`;
+    }
+
+    function limpiarCampos() {
+      document.getElementById("orden").value = "";
+      document.getElementById("materia").value = "";
+      document.getElementById("mano").value = "";
+      document.getElementById("cif").value = "";
+      document.getElementById("cantidad").value = "";
+    }
+
+    function generarExcel() {
+      if (ordenes.length === 0) {
+        alert("No hay órdenes registradas todavía.");
+        return;
+      }
+
+      const datos = [
+        ["CONTABILIPAN - Resumen de Órdenes de Producción"],
+        [],
+        ["Orden", "Cantidad", "Materia Prima (Q)", "Mano de Obra (Q)", "CIF (Q)", "Total (Q)", "Unitario (Q)"],
+      ];
+
+      let totalGeneral = 0;
+      ordenes.forEach(o => {
+        datos.push([
+          o.nombre,
+          o.cantidad,
+          o.materia,
+          o.mano,
+          o.cif,
+          o.costoTotal,
+          o.costoUnitario
+        ]);
+        totalGeneral += o.costoTotal;
+      });
+
+      datos.push([]);
+      datos.push(["TOTAL GENERAL", "", "", "", "", totalGeneral, ""]);
+
+      const hoja = XLSX.utils.aoa_to_sheet(datos);
+      const libro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(libro, hoja, "Contabilipan");
+
+      // Genera y descarga el archivo Excel directamente
+      XLSX.writeFile(libro, "Contabilipan.xlsx");
+    }
+  </script>
+</body>
+</html>
